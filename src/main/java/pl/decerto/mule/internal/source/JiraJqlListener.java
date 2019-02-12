@@ -9,6 +9,7 @@ import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
 public class JiraJqlListener extends JiraListener {
 
 	@Parameter
+	@DisplayName("JQL Query")
 	private String jqlQuery;
 
 	@Override
