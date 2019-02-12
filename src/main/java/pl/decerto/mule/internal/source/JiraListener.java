@@ -9,10 +9,10 @@ import java.util.Date;
 import java.util.Objects;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionProvider;
-import org.mule.runtime.extension.api.annotation.Alias;
 import org.mule.runtime.extension.api.annotation.param.Config;
 import org.mule.runtime.extension.api.annotation.param.Connection;
-import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
+import org.mule.runtime.extension.api.annotation.param.Optional;
+import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.mule.runtime.extension.api.runtime.source.PollContext;
 import org.mule.runtime.extension.api.runtime.source.PollingSource;
@@ -24,9 +24,7 @@ import pl.decerto.mule.internal.connection.JiraConnection;
 import pl.decerto.mule.internal.source.results.JiraChangeAttributes;
 import pl.decerto.mule.internal.source.results.JiraChangePayload;
 
-@DisplayName("On create issue")
-@Alias(value = "jira-listener")
-public class JiraDirectoryListener extends PollingSource<JiraChangePayload, JiraChangeAttributes> {
+public abstract class JiraListener extends PollingSource<JiraChangePayload, JiraChangeAttributes> {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(JiraChangePayload.class);
 
@@ -36,11 +34,13 @@ public class JiraDirectoryListener extends PollingSource<JiraChangePayload, Jira
 	@Config
 	private BasicConfiguration config;
 
+	private SimpleDateFormat DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
 	private JiraRestClient client;
 
-	private String lastDate;
+	String lastDate;
 
-	private SimpleDateFormat DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+	String currentDate;
 
 
 	@Override
@@ -59,12 +59,12 @@ public class JiraDirectoryListener extends PollingSource<JiraChangePayload, Jira
 		if (pollContext.isSourceStopping()) {
 			return;
 		}
-		String currentDate = DATE_TIME_FORMAT.format(new Date());
+		currentDate = DATE_TIME_FORMAT.format(new Date());
 
 		if (currentDate.equals(lastDate)) {
 			return;
 		}
-		String query = createSearchBetweenDatesJqlQuery(currentDate);
+		String query = getJqlQuery();
 		LOGGER.debug("JQL " + query);
 		Promise<SearchResult> searchResultPromise = client.getSearchClient().searchJql(query);
 		try {
@@ -93,10 +93,6 @@ public class JiraDirectoryListener extends PollingSource<JiraChangePayload, Jira
 		});
 	}
 
-	private String createSearchBetweenDatesJqlQuery(String currentDate) {
-		return "created >= \"" + lastDate + "\" AND created < \"" + currentDate + "\"";
-	}
-
 	private Result<JiraChangePayload, JiraChangeAttributes> createResult(Issue issue) {
 		JiraChangePayload change = createJiraChange(issue);
 		return buildResult(change);
@@ -118,4 +114,6 @@ public class JiraDirectoryListener extends PollingSource<JiraChangePayload, Jira
 				.output(change)
 				.build();
 	}
+
+	abstract String getJqlQuery();
 }
