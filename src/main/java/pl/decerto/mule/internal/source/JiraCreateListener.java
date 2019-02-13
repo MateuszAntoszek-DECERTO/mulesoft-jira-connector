@@ -1,6 +1,9 @@
 package pl.decerto.mule.internal.source;
 
+import com.atlassian.jira.rest.client.api.domain.Issue;
+import java.util.function.Function;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTime;
 import org.mule.runtime.extension.api.annotation.Alias;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
@@ -21,5 +24,10 @@ public class JiraCreateListener extends JiraListener {
 	String getJqlQuery() {
 		return "created >= \"" + lastDate + "\" AND created < \"" + currentDate + "\" "
 				+ (StringUtils.isNoneBlank(jqlQuery) ? ("AND " + jqlQuery) : "");
+	}
+
+	@Override
+	Function<Issue, DateTime> getComparingDate() {
+		return Issue::getCreationDate;
 	}
 }

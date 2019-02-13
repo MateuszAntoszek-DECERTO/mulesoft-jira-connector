@@ -1,17 +1,30 @@
 package pl.decerto.mule.internal.source;
 
+import static java.util.Comparator.comparing;
 import com.atlassian.jira.rest.client.api.JiraRestClient;
 import com.atlassian.jira.rest.client.api.RestClientException;
 import com.atlassian.jira.rest.client.api.domain.Issue;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.util.concurrent.Promise;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.StreamSupport;
+import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
+import org.joda.time.base.AbstractInstant;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionProvider;
 import org.mule.runtime.extension.api.annotation.param.Config;
 import org.mule.runtime.extension.api.annotation.param.Connection;
+import org.mule.runtime.extension.api.annotation.param.Optional;
+import org.mule.runtime.extension.api.annotation.param.Parameter;
+import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
+import org.mule.runtime.extension.api.annotation.param.display.Example;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.mule.runtime.extension.api.runtime.source.PollContext;
 import org.mule.runtime.extension.api.runtime.source.PollingSource;
@@ -33,19 +46,30 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 	@Config
 	private BasicConfiguration config;
 
-	private SimpleDateFormat DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+	private DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm");
 
-	private JiraRestClient client;
+	JiraRestClient client;
+
+	@Parameter
+	@DisplayName("Date from")
+	@Example("yyyy-MM-dd HH:mm")
+	private String dateFrom;
+
+	@Parameter
+	@Optional
+	@DisplayName("Jira Timezone")
+	@Example("Code (like GMT) or offset(like +00:00)")
+	private String timezone;
 
 	String lastDate;
 
 	String currentDate;
 
-
 	@Override
 	protected void doStart() throws ConnectionException {
 		client = connection.connect().getClient();
-		lastDate = DATE_TIME_FORMAT.format(new Date());
+		lastDate = dateFrom;
+		setTimeZone();
 	}
 
 	@Override
@@ -58,22 +82,29 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 		if (pollContext.isSourceStopping()) {
 			return;
 		}
-		currentDate = DATE_TIME_FORMAT.format(new Date());
-
-		if (currentDate.equals(lastDate)) {
-			return;
-		}
+		currentDate = DATE_TIME_FORMAT.print(new LocalDateTime(DATE_TIME_FORMAT.getZone()));
 		String query = getJqlQuery();
 		LOGGER.debug("JQL " + query);
 		Promise<SearchResult> searchResultPromise = client.getSearchClient().searchJql(query);
 		try {
 			SearchResult result = searchResultPromise.claim();
 			acceptChanges(pollContext, result.getIssues());
-			lastDate = currentDate;
+			updateLastDate(result);
 		} catch (RestClientException e) {
 			LOGGER.error("There is an issue with REST API.", e);
 		} catch (Exception e) {
 			LOGGER.error("Error while executing JQL query ", e);
+		}
+	}
+
+	private void updateLastDate(SearchResult issues) {
+		if (issues.getTotal() > 0) {
+			DateTime dateTime = StreamSupport.stream(issues.getIssues().spliterator(), false)
+					.map(Issue::getCreationDate)
+					.max(comparing(AbstractInstant::toDate))
+					.get();
+			lastDate = DATE_TIME_FORMAT.print(dateTime.plusMinutes(1));
+			LOGGER.info("DATTAAA "+ lastDate);
 		}
 	}
 
@@ -84,7 +115,7 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 		}
 	}
 
-	private void acceptChanges(PollContext<JiraChangePayload, JiraChangeAttributes> pollContext, Iterable<Issue> issues) {
+	void acceptChanges(PollContext<JiraChangePayload, JiraChangeAttributes> pollContext, Iterable<Issue> issues) {
 		issues.forEach(issue -> acceptItem(pollContext, issue));
 	}
 
@@ -118,6 +149,19 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 		return Result.<JiraChangePayload, JiraChangeAttributes>builder()
 				.output(change)
 				.build();
+	}
+
+	Function<Issue, DateTime> getComparingDate() {
+		return Issue::getCreationDate;
+	}
+
+	private void setTimeZone() {
+		if (StringUtils.isNoneBlank(timezone)) {
+			DATE_TIME_FORMAT = DATE_TIME_FORMAT.withZone(DateTimeZone.forID(timezone));
+		} else {
+			DATE_TIME_FORMAT = DATE_TIME_FORMAT.withZone(DateTimeZone.getDefault());
+		}
+		LOGGER.debug("set time zone " + DATE_TIME_FORMAT.getZone().getID());
 	}
 
 	abstract String getJqlQuery();
