@@ -104,7 +104,6 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 					.max(comparing(AbstractInstant::toDate))
 					.get();
 			lastDate = DATE_TIME_FORMAT.print(dateTime.plusMinutes(1));
-			LOGGER.info("DATTAAA "+ lastDate);
 		}
 	}
 
