@@ -1,6 +1,7 @@
 package pl.decerto.mule.internal.source;
 
 import com.atlassian.jira.rest.client.api.JiraRestClient;
+import com.atlassian.jira.rest.client.api.RestClientException;
 import com.atlassian.jira.rest.client.api.domain.Issue;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.util.concurrent.Promise;
@@ -68,8 +69,11 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 		LOGGER.debug("JQL " + query);
 		Promise<SearchResult> searchResultPromise = client.getSearchClient().searchJql(query);
 		try {
-			acceptChanges(pollContext, searchResultPromise.get().getIssues());
+			SearchResult result = searchResultPromise.claim();
+			acceptChanges(pollContext, result.getIssues());
 			lastDate = currentDate;
+		} catch (RestClientException e) {
+			LOGGER.error("There is an issue with REST API.", e);
 		} catch (Exception e) {
 			LOGGER.error("Error while executing JQL query ", e);
 		}

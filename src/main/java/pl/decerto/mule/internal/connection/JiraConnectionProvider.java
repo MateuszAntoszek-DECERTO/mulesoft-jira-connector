@@ -1,5 +1,8 @@
 package pl.decerto.mule.internal.connection;
 
+import com.atlassian.jira.rest.client.api.RestClientException;
+
+import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionValidationResult;
 import org.mule.runtime.api.connection.PoolingConnectionProvider;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
@@ -37,6 +40,14 @@ public class JiraConnectionProvider implements PoolingConnectionProvider<JiraCon
 
 	@Override
 	public ConnectionValidationResult validate(JiraConnection connection) {
+		try {
+			connection.getClient().getMetadataClient()
+					.getStatuses()
+					.fail(throwable -> new ConnectionException("Connection not valid", throwable))
+					.claim();
+		} catch (RestClientException e) {
+			return ConnectionValidationResult.failure("There is an issue with REST API", e);
+		}
 		return ConnectionValidationResult.success();
 	}
 }
