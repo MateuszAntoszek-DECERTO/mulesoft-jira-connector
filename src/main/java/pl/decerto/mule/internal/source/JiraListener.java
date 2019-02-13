@@ -109,7 +109,7 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 		change.setProject(issue.getProject().getName());
 		change.setDueDate(issue.getDueDate() == null ? "" : issue.getDueDate().toString());
 		change.setSelf(issue.getSelf().toString());
-		change.setStatus(issue.getStatus() == null ? "" : issue.getStatus().getDescription());
+		change.setStatus(issue.getStatus() == null ? "" : issue.getStatus().getName());
 		change.setKey(issue.getKey());
 		return change;
 	}
