@@ -12,8 +12,6 @@ import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionProvider;
 import org.mule.runtime.extension.api.annotation.param.Config;
 import org.mule.runtime.extension.api.annotation.param.Connection;
-import org.mule.runtime.extension.api.annotation.param.Optional;
-import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.mule.runtime.extension.api.runtime.source.PollContext;
 import org.mule.runtime.extension.api.runtime.source.PollingSource;
@@ -106,10 +104,13 @@ public abstract class JiraListener extends PollingSource<JiraChangePayload, Jira
 		JiraChangePayload change = new JiraChangePayload();
 		change.setSummary(issue.getSummary());
 		change.setDescription(issue.getDescription());
-		change.setIssieType(issue.getIssueType().getName());
+		change.setIssueType(issue.getIssueType().getName());
 		change.setPriority(Objects.requireNonNull(issue.getPriority()).getName());
 		change.setProject(issue.getProject().getName());
 		change.setDueDate(issue.getDueDate() == null ? "" : issue.getDueDate().toString());
+		change.setSelf(issue.getSelf().toString());
+		change.setStatus(issue.getStatus() == null ? "" : issue.getStatus().getDescription());
+		change.setKey(issue.getKey());
 		return change;
 	}
 

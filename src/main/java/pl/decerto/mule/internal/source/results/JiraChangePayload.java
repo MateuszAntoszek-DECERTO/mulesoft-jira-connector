@@ -8,11 +8,17 @@ public class JiraChangePayload {
 
 	private String project;
 
-	private String issieType;
+	private String issueType;
 
 	private String priority;
 
 	private String dueDate;
+
+	private String self;
+
+	private String key;
+
+	private String status;
 
 	public String getSummary() {
 		return summary;
@@ -38,12 +44,12 @@ public class JiraChangePayload {
 		this.project = project;
 	}
 
-	public String getIssieType() {
-		return issieType;
+	public String getIssueType() {
+		return issueType;
 	}
 
-	public void setIssieType(String issieType) {
-		this.issieType = issieType;
+	public void setIssueType(String issueType) {
+		this.issueType = issueType;
 	}
 
 	public String getPriority() {
@@ -60,5 +66,29 @@ public class JiraChangePayload {
 
 	public void setDueDate(String dueDate) {
 		this.dueDate = dueDate;
+	}
+
+	public String getSelf() {
+		return self;
+	}
+
+	public void setSelf(String self) {
+		this.self = self;
+	}
+
+	public void setKey(String key) {
+		this.key = key;
+	}
+
+	public String getKey() {
+		return key;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public String getStatus() {
+		return status;
 	}
 }
